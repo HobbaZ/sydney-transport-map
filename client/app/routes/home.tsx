@@ -1,4 +1,5 @@
 import type { Route } from "./+types/home";
+import MapClient from "~/components/MapClient";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -8,5 +9,5 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return <Home />;
+  return <MapClient />;
 }
