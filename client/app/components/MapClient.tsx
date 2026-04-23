@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 
 export default function MapClient() {
-  const [Map, setMap] = useState(null);
+  const [MapComponent, setMapComponent] = useState<any>(null);
 
   useEffect(() => {
     import("./Map").then((mod) => {
-      setMap(() => mod.default);
+      setMapComponent(() => mod.default);
     });
   }, []);
 
-  if (!Map) return <div>Loading map...</div>;
+  if (!MapComponent) return <div>Loading map...</div>;
 
-  return <Map />;
+  return <MapComponent />;
 }

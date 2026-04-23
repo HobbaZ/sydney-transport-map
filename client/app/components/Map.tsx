@@ -1,6 +1,10 @@
+import { useMemo } from "react";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
+import { VehicleMarkers } from "./vehicleMarkers";
+import { getRouteColor } from "./colours";
+import RoutesLayer from "./RoutesLayer";
 
 type Vehicle = {
   id: string;
@@ -8,7 +12,6 @@ type Vehicle = {
   lon: number;
   route?: string | null;
   timestamp?: number | null;
-  bearing?: number;
 };
 
 type AnimatedVehicle = Vehicle & {
@@ -18,35 +21,19 @@ type AnimatedVehicle = Vehicle & {
 
 type VehicleMap = Record<string, AnimatedVehicle>;
 
-function getBearing(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const toDeg = (rad: number) => (rad * 180) / Math.PI;
+function createVehicleIcon(route?: string | null) {
+  const color = getRouteColor(route);
 
-  const dLon = toRad(lon2 - lon1);
-
-  const y = Math.sin(dLon) * Math.cos(toRad(lat2));
-  const x =
-    Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
-    Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
-
-  return (toDeg(Math.atan2(y, x)) + 360) % 360;
-}
-
-function createVehicleIcon(bearing: number) {
   return L.divIcon({
     className: "",
     html: `
       <div style="
-        transform: rotate(${bearing}deg);
-        font-size: 20px;
-      ">
-        🚌
-      </div>
+        width: 14px;
+        height: 14px;
+        background: ${color};
+        border-radius: 50%;
+        border: 2px solid white;
+      "></div>
     `,
     iconSize: [20, 20],
     iconAnchor: [10, 10],
@@ -57,6 +44,8 @@ function useVehicles(): Vehicle[] {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const prevVehiclesRef = useRef<VehicleMap>({});
   const animationRef = useRef<number | null>(null);
+  const isAnimatingRef = useRef(false);
+  const lastUpdateRef = useRef(0);
 
   useEffect(() => {
     const animate = (vehicleMap: VehicleMap, startTime: number) => {
@@ -64,9 +53,14 @@ function useVehicles(): Vehicle[] {
         cancelAnimationFrame(animationRef.current);
       }
 
+      isAnimatingRef.current = true;
+      lastUpdateRef.current = 0;
+
       const duration = 10000;
 
       const step = () => {
+        if (!isAnimatingRef.current) return;
+
         const now = Date.now();
         const t = Math.min((now - startTime) / duration, 1);
         const progress = t * (2 - t);
@@ -75,24 +69,23 @@ function useVehicles(): Vehicle[] {
           const lat = v.prevLat + (v.lat - v.prevLat) * progress;
           const lon = v.prevLon + (v.lon - v.prevLon) * progress;
 
-          const bearing = getBearing(v.prevLat, v.prevLon, v.lat, v.lon);
-
-          return {
-            ...v,
-            lat,
-            lon,
-            bearing,
-          };
+          return { ...v, lat, lon };
         });
 
-        setVehicles(interpolated);
+        // throttle updates (~20fps)
+        if (now - lastUpdateRef.current > 50) {
+          setVehicles(interpolated);
+          lastUpdateRef.current = now;
+        }
 
-        if (progress < 1) {
+        if (t < 1) {
           animationRef.current = requestAnimationFrame(step);
+        } else {
+          isAnimatingRef.current = false;
         }
       };
 
-      step();
+      animationRef.current = requestAnimationFrame(step);
     };
 
     const fetchVehicles = async () => {
@@ -141,6 +134,8 @@ function useVehicles(): Vehicle[] {
 
     return () => {
       clearInterval(interval);
+      isAnimatingRef.current = false;
+
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
@@ -150,8 +145,19 @@ function useVehicles(): Vehicle[] {
   return vehicles;
 }
 
-export default function Map() {
+export default function MapView() {
   const vehicles = useVehicles();
+  const routeColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+
+    vehicles.forEach((v) => {
+      if (v.route && !map.has(v.route)) {
+        map.set(v.route, getRouteColor(v.route));
+      }
+    });
+
+    return map;
+  }, [vehicles]);
 
   return (
     <MapContainer
@@ -161,13 +167,12 @@ export default function Map() {
     >
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-      {vehicles.map((v) => (
-        <Marker
-          key={v.id}
-          position={[v.lat, v.lon]}
-          icon={createVehicleIcon(v.bearing || 0)}
-        />
-      ))}
+      {vehicles.length > 0 && <RoutesLayer routeColorMap={routeColorMap} />}
+
+      <VehicleMarkers
+        vehicles={vehicles}
+        createVehicleIcon={createVehicleIcon}
+      />
     </MapContainer>
   );
 }
