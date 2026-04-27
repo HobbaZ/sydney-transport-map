@@ -8,7 +8,8 @@ type ShapePoint = {
 
 type RouteShape = {
   routeId: string;
-  points: ShapePoint[];
+  color: string;
+  points: { lat: number; lon: number }[];
 };
 
 type Shapes = Record<string, RouteShape>;
@@ -24,6 +25,7 @@ export default function RoutesLayer({
     const fetchRoutes = async () => {
       const res = await fetch("http://localhost:3001/api/routes");
       const data = await res.json();
+      console.log(data);
       setRoutes(data);
     };
 
@@ -32,17 +34,16 @@ export default function RoutesLayer({
 
   useEffect(() => {
     const runAnalysis = () => {
-      console.log("ROUTES SAMPLE:", Object.values(routes)[0]);
-
       const allIds = Object.keys(routes);
 
       const invalid = allIds.filter((id) => {
-        const points = routes[id];
+        const shape = routes[id];
 
         return (
-          !Array.isArray(points) ||
-          points.length === 0 ||
-          !points.every(
+          !shape ||
+          !Array.isArray(shape.points) ||
+          shape.points.length === 0 ||
+          !shape.points.every(
             (p) => typeof p.lat === "number" && typeof p.lon === "number",
           )
         );
@@ -59,20 +60,25 @@ export default function RoutesLayer({
     runAnalysis();
   }, [routes]);
 
-  const activeRouteIds = new Set(routeColorMap.keys());
-
   return (
     <>
-      {Object.entries(routes).map(([id, shape]) => (
-        <Polyline
-          key={id}
-          positions={shape.points.map((p) => [p.lat, p.lon])}
-          pathOptions={{
-            color: "red",
-            weight: 4,
-          }}
-        />
-      ))}
+      {Object.entries(routes).map(([id, shape]) => {
+        const points = shape.points;
+
+        if (!Array.isArray(points) || points.length < 2) return null;
+
+        return (
+          <Polyline
+            key={id}
+            positions={points.map((p) => [p.lat, p.lon])}
+            pathOptions={{
+              color: shape.color, // ✅ use backend color
+              weight: 4,
+              opacity: 0.7,
+            }}
+          />
+        );
+      })}
     </>
   );
 }

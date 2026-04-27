@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const GtfsRealtimeBindings = require("gtfs-realtime-bindings");
 const cors = require("cors");
+const simplify = require("simplify-js");
 
 const app = express();
 app.use(cors());
@@ -49,14 +50,6 @@ app.get("/api/vehicles", async (req, res) => {
       .filter(Boolean);
 
     res.json(vehicles);
-    console.log("found vehicles");
-    //console.log(vehicles);
-    /*console.log(
-      "Total entities:",
-      feed.entity.length,
-      "Valid vehicles:",
-      vehicles.length,
-    );*/
   } catch (err) {
     console.error(err);
     res.status(500).json({
@@ -82,46 +75,98 @@ async function loadShapes() {
   return data;
 }
 
-function mercatorToLatLng(x, y) {
-  const R = 6378137;
+function simplifyRoute(points) {
+  const formatted = points.map((p) => ({
+    x: p.lon,
+    y: p.lat,
+  }));
 
-  const lon = (x / R) * (180 / Math.PI);
-  const lat = (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) * (180 / Math.PI);
+  const simplified = simplify(formatted, 0.0005, true);
+  // ↑ tolerance tweak:
+  // 0.0001 = very detailed
+  // 0.0005 = balanced (recommended)
+  // 0.001 = aggressive
 
-  return [lat, lon];
+  return simplified.map((p) => ({
+    lat: p.y,
+    lon: p.x,
+  }));
 }
+
+function mercatorToLatLng(x, y) {
+  const lon = (x / 20037508.34) * 180;
+  let lat = (y / 20037508.34) * 180;
+
+  lat =
+    (180 / Math.PI) *
+    (2 * Math.atan(Math.exp((lat * Math.PI) / 180)) - Math.PI / 2);
+
+  return { lat, lon };
+}
+
+function mergePoints(existing, incoming) {
+  if (existing.length === 0) return incoming;
+
+  const last = existing[existing.length - 1];
+  const first = incoming[0];
+
+  const dist = Math.hypot(last.lat - first.lat, last.lon - first.lon);
+
+  // if close → append
+  if (dist < 0.01) {
+    return [...existing, ...incoming];
+  }
+
+  // otherwise keep separate (avoid bad joins)
+  return existing;
+}
+
+const seenShapes = new Set();
 
 app.get("/api/routes", async (req, res) => {
   try {
     const shapes = await loadShapes();
 
-    const grouped = {};
+    const routes = {};
+    const processedShapeIds = new Set();
 
     shapes.forEach((shape) => {
-      const id = shape.shape_id;
-      const routeId = shape.route_short_name; // 🔥 important
+      // ✅ prevent duplicate shapes
+      if (processedShapeIds.has(shape.shape_id)) return;
+      processedShapeIds.add(shape.shape_id);
 
-      const coords = shape.json_geometry?.coordinates;
-      if (!coords || !Array.isArray(coords)) return;
+      const routeId = shape.route_short_name; // "T8"
+      const color = `#${shape.route_color}`;
 
-      const points = coords.map(([x, y]) => {
-        const [lat, lon] = mercatorToLatLng(x, y);
-        return { lat, lon };
-      });
+      const coords = shape.json_geometry?.coordinates || [];
 
-      grouped[id] = {
-        routeId,
-        points,
-      };
+      const points = coords
+        .map(([x, y]) => mercatorToLatLng(x, y))
+        .filter((p) => !isNaN(p.lat) && !isNaN(p.lon));
+
+      if (points.length < 2) return;
+
+      points.sort((a, b) => a.lat - b.lat || a.lon - b.lon);
+
+      if (!routes[routeId]) {
+        routes[routeId] = {
+          routeId,
+          color,
+          points: [],
+        };
+      }
+
+      // ✅ merge + simplify ONCE per append
+      const merged = mergePoints(routes[routeId].points, points);
+      routes[routeId].points = simplifyRoute(merged);
     });
 
-    res.json(grouped);
+    console.log("Routes built:", Object.keys(routes).length);
 
-    console.log("✅ shapes processed:", Object.keys(grouped).length);
+    res.json(routes);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to load shapes" });
+    res.status(500).json({ error: "Failed to load routes" });
   }
 });
-
 app.listen(3001, () => console.log("Server running on 3001"));
