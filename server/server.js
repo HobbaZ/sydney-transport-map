@@ -10,6 +10,14 @@ app.use(cors());
 
 const API_KEY = process.env.TFNSW_API_KEY;
 
+function normalizeRoute(id) {
+  if (!id) return null;
+
+  // examples:
+  // "T8-1", "T8_1", "T8a" → "T8"
+  return id.match(/[A-Z0-9]+/)?.[0] ?? null;
+}
+
 // Train positions feed
 const URL = "https://api.transport.nsw.gov.au/v2/gtfs/vehiclepos/sydneytrains";
 
@@ -44,7 +52,7 @@ app.get("/api/vehicles", async (req, res) => {
           id: entity.id,
           lat: v.position.latitude,
           lon: v.position.longitude,
-          route: v.trip?.routeId ?? null,
+          route: normalizeRoute(v.trip?.routeId),
         };
       })
       .filter(Boolean);
@@ -81,7 +89,7 @@ function simplifyRoute(points) {
     y: p.lat,
   }));
 
-  const simplified = simplify(formatted, 0.0005, true);
+  const simplified = simplify(formatted, 0.0001, true);
   // ↑ tolerance tweak:
   // 0.0001 = very detailed
   // 0.0005 = balanced (recommended)
@@ -104,39 +112,15 @@ function mercatorToLatLng(x, y) {
   return { lat, lon };
 }
 
-function mergePoints(existing, incoming) {
-  if (existing.length === 0) return incoming;
-
-  const last = existing[existing.length - 1];
-  const first = incoming[0];
-
-  const dist = Math.hypot(last.lat - first.lat, last.lon - first.lon);
-
-  // if close → append
-  if (dist < 0.01) {
-    return [...existing, ...incoming];
-  }
-
-  // otherwise keep separate (avoid bad joins)
-  return existing;
-}
-
-const seenShapes = new Set();
-
 app.get("/api/routes", async (req, res) => {
   try {
     const shapes = await loadShapes();
 
-    const routes = {};
-    const processedShapeIds = new Set();
+    const grouped = {};
 
-    shapes.forEach((shape) => {
-      // ✅ prevent duplicate shapes
-      if (processedShapeIds.has(shape.shape_id)) return;
-      processedShapeIds.add(shape.shape_id);
-
-      const routeId = shape.route_short_name; // "T8"
-      const color = `#${shape.route_color}`;
+    for (const shape of shapes) {
+      const routeId = shape.route_short_name;
+      const shapeId = shape.shape_id;
 
       const coords = shape.json_geometry?.coordinates || [];
 
@@ -144,22 +128,33 @@ app.get("/api/routes", async (req, res) => {
         .map(([x, y]) => mercatorToLatLng(x, y))
         .filter((p) => !isNaN(p.lat) && !isNaN(p.lon));
 
-      if (points.length < 2) return;
+      if (points.length < 2) continue;
 
-      points.sort((a, b) => a.lat - b.lat || a.lon - b.lon);
-
-      if (!routes[routeId]) {
-        routes[routeId] = {
-          routeId,
-          color,
-          points: [],
+      if (!grouped[routeId]) {
+        grouped[routeId] = {
+          shapes: {},
+          color: shape.route_color ? `#${shape.route_color}` : "#888",
         };
       }
 
-      // ✅ merge + simplify ONCE per append
-      const merged = mergePoints(routes[routeId].points, points);
-      routes[routeId].points = simplifyRoute(merged);
-    });
+      grouped[routeId].shapes[shapeId] = points;
+    }
+
+    const routes = {};
+
+    for (const [routeId, data] of Object.entries(grouped)) {
+      const shapesMap = data.shapes;
+      const color = data.color;
+
+      // Get first shape
+      const firstShape = Object.values(shapesMap)[0];
+
+      routes[routeId] = {
+        routeId,
+        color,
+        points: simplifyRoute(firstShape),
+      };
+    }
 
     console.log("Routes built:", Object.keys(routes).length);
 
@@ -169,4 +164,5 @@ app.get("/api/routes", async (req, res) => {
     res.status(500).json({ error: "Failed to load routes" });
   }
 });
+
 app.listen(3001, () => console.log("Server running on 3001"));

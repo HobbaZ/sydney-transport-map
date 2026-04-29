@@ -1,23 +1,29 @@
 import { Marker } from "react-leaflet";
 import { useMapBounds } from "./useMapBounds";
-import MarkerClusterGroup from "react-leaflet-cluster";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
+import { createVehicleIcon } from "./createVehicleIcons";
+import normalizeRoute from "./normalizeRoute";
 
-type Vehicle = {
-  id: string;
-  lat: number;
-  lon: number;
-  route?: string | null;
-};
-
-export function VehicleMarkers({
+export const VehicleMarkers = React.memo(function VehicleMarkers({
   vehicles,
-  createVehicleIcon,
+  routeColorMap,
 }: {
   vehicles: Vehicle[];
-  createVehicleIcon: (route?: string | null) => any;
+  routeColorMap: Map<string, string>;
 }) {
-  const bounds = useMapBounds(); // ✅ FIXED (inside component)
+  const bounds = useMapBounds();
+
+  const iconCache = useMemo(() => new Map(), []);
+
+  const getIcon = (route: string | null | undefined) => {
+    const key = normalizeRoute(route) || "default";
+
+    if (!iconCache.has(key)) {
+      iconCache.set(key, createVehicleIcon(route, routeColorMap));
+    }
+
+    return iconCache.get(key);
+  };
 
   const visibleVehicles = useMemo(() => {
     if (!bounds) return [];
@@ -28,14 +34,14 @@ export function VehicleMarkers({
   }, [vehicles, bounds]);
 
   return (
-    <MarkerClusterGroup chunkedLoading maxClusterRadius={50}>
+    <>
       {visibleVehicles.map((v) => (
         <Marker
           key={v.id}
           position={[v.lat, v.lon]}
-          icon={createVehicleIcon(v.route)}
+          icon={getIcon(normalizeRoute(v.route))}
         />
       ))}
-    </MarkerClusterGroup>
+    </>
   );
-}
+});
