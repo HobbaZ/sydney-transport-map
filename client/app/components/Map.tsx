@@ -11,7 +11,7 @@ export default function MapView() {
 
   useEffect(() => {
     const fetchRoutes = async () => {
-      const res = await fetch("http://localhost:3001/api/routes");
+      const res = await fetch("/api/routes");
       const data = await res.json();
       setRoutes(data);
     };

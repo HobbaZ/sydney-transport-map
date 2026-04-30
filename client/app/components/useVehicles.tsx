@@ -57,7 +57,7 @@ export default function useVehicles(routes: Record<string, RouteShape>) {
 
   useEffect(() => {
     const fetchVehicles = async () => {
-      const res = await fetch("http://localhost:3001/api/vehicles");
+      const res = await fetch("/api/vehicles");
       const data: Vehicle[] = await res.json();
 
       const prev = prevRef.current;

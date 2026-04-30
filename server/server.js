@@ -5,8 +5,35 @@ const GtfsRealtimeBindings = require("gtfs-realtime-bindings");
 const cors = require("cors");
 const simplify = require("simplify-js");
 
+const PORT = process.env.PORT || 3001;
+
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === "production"
+        ? "https://sydtrains.herokuapp.com"
+        : "http://localhost:5173",
+    credentials: true,
+  }),
+);
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+app.use(function (req, res, next) {
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+  );
+  next();
+});
+
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../client/build")));
+
+  /*app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../client/build/index.html"));
+  });*/
+}
 
 const API_KEY = process.env.TFNSW_API_KEY;
 
@@ -21,43 +48,67 @@ function normalizeRoute(id) {
 // Train positions feed
 const URL = "https://api.transport.nsw.gov.au/v2/gtfs/vehiclepos/sydneytrains";
 
+let cachedVehicles = [];
+let lastFetchTime = 0;
+let lastClientRequest = 0;
+
+const FETCH_INTERVAL = 10000; // 10s
+const ACTIVE_WINDOW = 30000; // 30s (consider "user active")
+
+async function fetchVehiclesFromAPI() {
+  const response = await fetch(URL, {
+    headers: {
+      Authorization: `apikey ${API_KEY}`,
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`API error ${response.status}: ${text}`);
+  }
+
+  const buffer = await response.arrayBuffer();
+
+  const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(
+    new Uint8Array(buffer),
+  );
+
+  const vehicles = (feed.entity || [])
+    .map((entity) => {
+      const v = entity.vehicle;
+      if (!v || !v.position) return null;
+
+      return {
+        id: entity.id,
+        lat: v.position.latitude,
+        lon: v.position.longitude,
+        route: normalizeRoute(v.trip?.routeId),
+      };
+    })
+    .filter(Boolean);
+
+  cachedVehicles = vehicles;
+  lastFetchTime = Date.now();
+}
+
 app.get("/api/vehicles", async (req, res) => {
   try {
-    const response = await fetch(URL, {
-      headers: {
-        Authorization: `apikey ${API_KEY}`,
-      },
-    });
+    const now = Date.now();
 
-    console.log("STATUS:", response.status);
+    const isActive = now - lastClientRequest < ACTIVE_WINDOW;
+    const isStale = now - lastFetchTime > FETCH_INTERVAL;
 
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`API error ${response.status}: ${text}`);
+    // Only fetch if:
+    // - someone has been active recently
+    // - AND cache is stale
+    if (isActive && isStale) {
+      await fetchVehiclesFromAPI();
     }
 
-    const buffer = await response.arrayBuffer();
+    // update AFTER check
+    lastClientRequest = now;
 
-    const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(
-      new Uint8Array(buffer),
-    );
-
-    const vehicles = (feed.entity || [])
-      .map((entity) => {
-        const v = entity.vehicle;
-
-        if (!v || !v.position) return null;
-
-        return {
-          id: entity.id,
-          lat: v.position.latitude,
-          lon: v.position.longitude,
-          route: normalizeRoute(v.trip?.routeId),
-        };
-      })
-      .filter(Boolean);
-
-    res.json(vehicles);
+    res.json(cachedVehicles);
   } catch (err) {
     console.error(err);
     res.status(500).json({
@@ -165,4 +216,4 @@ app.get("/api/routes", async (req, res) => {
   }
 });
 
-app.listen(3001, () => console.log("Server running on 3001"));
+app.listen(PORT, () => console.log(`Server running on ${PORT}`));
