@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "cd server && npm i && cd ../client && npm i"
+    "server": "cd server && npm run server",
+    "client": "cd client && npm run dev",
+    "develop": "concurrently \"npm run server\" \"npm run client\"",
+    "install": "cd server && npm i && cd ../client && npm i",
+    "build": "cd client && npm run build"
   },
   "repository": {
     "type": "git",
@@ -18,5 +22,8 @@
   "bugs": {
     "url": "https://github.com/HobbaZ/sydney-transport-map/issues"
   },
-  "homepage": "https://github.com/HobbaZ/sydney-transport-map#readme"
+  "homepage": "https://github.com/HobbaZ/sydney-transport-map#readme",
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
 }
