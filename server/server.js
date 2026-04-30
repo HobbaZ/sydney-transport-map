@@ -12,7 +12,7 @@ app.use(
   cors({
     origin:
       process.env.NODE_ENV === "production"
-        ? "https://sydtrains.herokuapp.com"
+        ? "https://sydtrains-befa51986f3e.herokuapp.com"
         : "http://localhost:5173",
     credentials: true,
   }),
