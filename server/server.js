@@ -3,6 +3,7 @@ require("dotenv").config({
 });
 
 const express = require("express");
+const path = require("path");
 const GtfsRealtimeBindings = require("gtfs-realtime-bindings");
 const cors = require("cors");
 const simplify = require("simplify-js");
