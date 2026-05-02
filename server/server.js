@@ -9,6 +9,19 @@ const cors = require("cors");
 const simplify = require("simplify-js");
 
 const PORT = process.env.PORT || 3001;
+const API_KEY = process.env.TFNSW_API_KEY;
+// Train positions feed
+const URL = "https://api.transport.nsw.gov.au/v2/gtfs/vehiclepos/sydneytrains";
+
+let cachedVehicles = [];
+let lastFetchTime = 0;
+let lastClientRequest = 0;
+const FETCH_INTERVAL = 10000; // 10s
+const ACTIVE_WINDOW = 30000; // 30s (consider "user active")
+const SHAPES_URL =
+  "https://opendata.transport.nsw.gov.au/data/dataset/3e349c1c-9ac0-4f70-8a3f-b1d3e4cb1042/resource/1c2b217e-d0c1-4626-962e-55b73cbbe732/download/sydneytrains.json";
+
+let cachedShapes = null;
 
 const app = express();
 app.use(
@@ -29,70 +42,6 @@ app.use(function (req, res, next) {
   );
   next();
 });
-
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../client/build")));
-
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../client/build/index.html"));
-  });
-}
-
-const API_KEY = process.env.TFNSW_API_KEY;
-
-function normalizeRoute(id) {
-  if (!id) return null;
-
-  // examples:
-  // "T8-1", "T8_1", "T8a" → "T8"
-  return id.match(/[A-Z0-9]+/)?.[0] ?? null;
-}
-
-// Train positions feed
-const URL = "https://api.transport.nsw.gov.au/v2/gtfs/vehiclepos/sydneytrains";
-
-let cachedVehicles = [];
-let lastFetchTime = 0;
-let lastClientRequest = 0;
-
-const FETCH_INTERVAL = 10000; // 10s
-const ACTIVE_WINDOW = 30000; // 30s (consider "user active")
-
-async function fetchVehiclesFromAPI() {
-  const response = await fetch(URL, {
-    headers: {
-      Authorization: `apikey ${API_KEY}`,
-    },
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`API error ${response.status}: ${text}`);
-  }
-
-  const buffer = await response.arrayBuffer();
-
-  const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(
-    new Uint8Array(buffer),
-  );
-
-  const vehicles = (feed.entity || [])
-    .map((entity) => {
-      const v = entity.vehicle;
-      if (!v || !v.position) return null;
-
-      return {
-        id: entity.id,
-        lat: v.position.latitude,
-        lon: v.position.longitude,
-        route: normalizeRoute(v.trip?.routeId),
-      };
-    })
-    .filter(Boolean);
-
-  cachedVehicles = vehicles;
-  lastFetchTime = Date.now();
-}
 
 app.get("/api/vehicles", async (req, res) => {
   try {
@@ -120,51 +69,6 @@ app.get("/api/vehicles", async (req, res) => {
     });
   }
 });
-
-const SHAPES_URL =
-  "https://opendata.transport.nsw.gov.au/data/dataset/3e349c1c-9ac0-4f70-8a3f-b1d3e4cb1042/resource/1c2b217e-d0c1-4626-962e-55b73cbbe732/download/sydneytrains.json";
-
-let cachedShapes = null;
-
-async function loadShapes() {
-  if (cachedShapes) return cachedShapes;
-
-  const res = await fetch(SHAPES_URL);
-  const data = await res.json();
-
-  cachedShapes = data; // cache in memory
-
-  return data;
-}
-
-function simplifyRoute(points) {
-  const formatted = points.map((p) => ({
-    x: p.lon,
-    y: p.lat,
-  }));
-
-  const simplified = simplify(formatted, 0.0001, true);
-  // ↑ tolerance tweak:
-  // 0.0001 = very detailed
-  // 0.0005 = balanced (recommended)
-  // 0.001 = aggressive
-
-  return simplified.map((p) => ({
-    lat: p.y,
-    lon: p.x,
-  }));
-}
-
-function mercatorToLatLng(x, y) {
-  const lon = (x / 20037508.34) * 180;
-  let lat = (y / 20037508.34) * 180;
-
-  lat =
-    (180 / Math.PI) *
-    (2 * Math.atan(Math.exp((lat * Math.PI) / 180)) - Math.PI / 2);
-
-  return { lat, lon };
-}
 
 app.get("/api/routes", async (req, res) => {
   try {
@@ -218,5 +122,97 @@ app.get("/api/routes", async (req, res) => {
     res.status(500).json({ error: "Failed to load routes" });
   }
 });
+
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../client/build")));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../client/build/index.html"));
+  });
+}
+
+function normalizeRoute(id) {
+  if (!id) return null;
+
+  // examples:
+  // "T8-1", "T8_1", "T8a" → "T8"
+  return id.match(/[A-Z0-9]+/)?.[0] ?? null;
+}
+
+async function fetchVehiclesFromAPI() {
+  const response = await fetch(URL, {
+    headers: {
+      Authorization: `apikey ${API_KEY}`,
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`API error ${response.status}: ${text}`);
+  }
+
+  const buffer = await response.arrayBuffer();
+
+  const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(
+    new Uint8Array(buffer),
+  );
+
+  const vehicles = (feed.entity || [])
+    .map((entity) => {
+      const v = entity.vehicle;
+      if (!v || !v.position) return null;
+
+      return {
+        id: entity.id,
+        lat: v.position.latitude,
+        lon: v.position.longitude,
+        route: normalizeRoute(v.trip?.routeId),
+      };
+    })
+    .filter(Boolean);
+
+  cachedVehicles = vehicles;
+  lastFetchTime = Date.now();
+}
+
+async function loadShapes() {
+  if (cachedShapes) return cachedShapes;
+
+  const res = await fetch(SHAPES_URL);
+  const data = await res.json();
+
+  cachedShapes = data; // cache in memory
+
+  return data;
+}
+
+function mercatorToLatLng(x, y) {
+  const lon = (x / 20037508.34) * 180;
+  let lat = (y / 20037508.34) * 180;
+
+  lat =
+    (180 / Math.PI) *
+    (2 * Math.atan(Math.exp((lat * Math.PI) / 180)) - Math.PI / 2);
+
+  return { lat, lon };
+}
+
+function simplifyRoute(points) {
+  const formatted = points.map((p) => ({
+    x: p.lon,
+    y: p.lat,
+  }));
+
+  const simplified = simplify(formatted, 0.0001, true);
+  // ↑ tolerance tweak:
+  // 0.0001 = very detailed
+  // 0.0005 = balanced (recommended)
+  // 0.001 = aggressive
+
+  return simplified.map((p) => ({
+    lat: p.y,
+    lon: p.x,
+  }));
+}
 
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));
