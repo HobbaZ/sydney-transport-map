@@ -56,6 +56,7 @@ export default function useVehicles(routes: Record<string, RouteShape>) {
     const fetchVehicles = async () => {
       const res = await fetch("/api/vehicles");
       const data: Vehicle[] = await res.json();
+      //console.log("API /vehicles response:", data);
 
       const prev = prevRef.current;
       const next: VehicleMap = {};

@@ -104,7 +104,7 @@ app.get("/api/routes", async (req, res) => {
       };
     }
 
-    //console.log("Routes built:", Object.keys(routes).length);
+    console.log("Routes built:", Object.keys(routes).length);
 
     res.json(routes);
   } catch (err) {
@@ -150,6 +150,15 @@ async function fetchVehiclesFromAPI() {
     .map((entity) => {
       const v = entity.vehicle;
       if (!v || !v.position) return null;
+
+      // Skip non-passenger or unknown route services
+      if (
+        !v.trip?.routeId ||
+        v.trip?.routeId.startsWith("RTTA") ||
+        !v.vehicle?.label
+      ) {
+        return null;
+      }
 
       return {
         id: entity.id,
