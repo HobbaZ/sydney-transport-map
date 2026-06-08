@@ -2,7 +2,10 @@ type Vehicle = {
   id: string;
   lat: number;
   lon: number;
-  route?: string | null;
+  routeId?: string | null;
+  tripId: string | null;
+  label: string | null;
+  stopId: string | null;
   timestamp?: number | null;
 };
 

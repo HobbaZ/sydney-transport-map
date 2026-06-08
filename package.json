@@ -1,7 +1,7 @@
 {
   "name": "sydney-transport-map",
   "engines": {
-    "node": "24.x"
+    "node": "22.x"
   },
   "version": "1.0.0",
   "description": "Testing transport for NSW api",

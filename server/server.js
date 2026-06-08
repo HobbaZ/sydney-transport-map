@@ -23,6 +23,12 @@ const SHAPES_URL =
 
 let cachedShapes = null;
 
+function normalizeRoute(id) {
+  if (!id) return null;
+  // "T8-1", "T8_1", "T8a" → "T8"
+  return id.match(/[A-Z0-9]+/)?.[0] ?? null;
+}
+
 const app = express();
 app.use(
   cors({
@@ -74,11 +80,12 @@ app.get("/api/routes", async (req, res) => {
   try {
     const shapes = await loadShapes();
 
-    const grouped = {};
+    const routes = {};
 
     for (const shape of shapes) {
-      const routeId = shape.route_short_name;
       const shapeId = shape.shape_id;
+
+      if (!shapeId) continue;
 
       const coords = shape.json_geometry?.coordinates || [];
 
@@ -88,38 +95,24 @@ app.get("/api/routes", async (req, res) => {
 
       if (points.length < 2) continue;
 
-      if (!grouped[routeId]) {
-        grouped[routeId] = {
-          shapes: {},
-          color: shape.route_color ? `#${shape.route_color}` : "#888",
-        };
-      }
-
-      grouped[routeId].shapes[shapeId] = points;
-    }
-
-    const routes = {};
-
-    for (const [routeId, data] of Object.entries(grouped)) {
-      const shapesMap = data.shapes;
-      const color = data.color;
-
-      // Get first shape
-      const firstShape = Object.values(shapesMap)[0];
-
-      routes[routeId] = {
-        routeId,
-        color,
-        points: simplifyRoute(firstShape),
+      routes[shapeId] = {
+        shapeId,
+        routeId: shape.route_short_name || null,
+        routeName: shape.route_long_name || null,
+        color: shape.route_color ? `#${shape.route_color}` : "#888",
+        points: simplifyRoute(points),
       };
     }
 
-    console.log("Routes built:", Object.keys(routes).length);
+    //console.log("Routes built:", Object.keys(routes).length);
 
     res.json(routes);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to load routes" });
+
+    res.status(500).json({
+      error: "Failed to load routes",
+    });
   }
 });
 
@@ -133,14 +126,6 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-function normalizeRoute(id) {
-  if (!id) return null;
-
-  // examples:
-  // "T8-1", "T8_1", "T8a" → "T8"
-  return id.match(/[A-Z0-9]+/)?.[0] ?? null;
-}
-
 async function fetchVehiclesFromAPI() {
   const response = await fetch(URL, {
     headers: {
@@ -152,6 +137,8 @@ async function fetchVehiclesFromAPI() {
     const text = await response.text();
     throw new Error(`API error ${response.status}: ${text}`);
   }
+
+  const contentType = response.headers.get("content-type");
 
   const buffer = await response.arrayBuffer();
 
@@ -168,12 +155,17 @@ async function fetchVehiclesFromAPI() {
         id: entity.id,
         lat: v.position.latitude,
         lon: v.position.longitude,
-        route: normalizeRoute(v.trip?.routeId),
+        routeId: normalizeRoute(v.trip?.routeId),
+        routeShort: v.trip?.routeId?.split("_")[0] ?? null,
+        tripId: v.trip?.tripId ?? null,
+        label: v.vehicle?.label ?? null,
+        stopId: v.stopId ?? null,
       };
     })
     .filter(Boolean);
 
   cachedVehicles = vehicles;
+
   lastFetchTime = Date.now();
 }
 
@@ -205,7 +197,7 @@ function simplifyRoute(points) {
     y: p.lat,
   }));
 
-  const simplified = simplify(formatted, 0.0001, true);
+  const simplified = simplify(formatted, 0.0005, true);
   // ↑ tolerance tweak:
   // 0.0001 = very detailed
   // 0.0005 = balanced (recommended)

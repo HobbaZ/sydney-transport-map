@@ -1,13 +1,14 @@
 import L from "leaflet";
-import normalizeRoute from "./normalizeRoute";
+import { lineColours } from "./lineColours";
 
-export function createVehicleIcon(
-  route: string | null | undefined,
-  routeColorMap: Map<string, string>,
-) {
-  const routeKey = normalizeRoute(route);
+export function createVehicleIcon(routeId: string | null | undefined) {
+  const routeKey = normalizeRoute(routeId);
 
-  const color = (routeKey && routeColorMap.get(routeKey)) || "#888";
+  const colourMap = Object.fromEntries(
+    lineColours.map((line) => [line.id, line.color]),
+  );
+
+  const color = colourMap[routeKey] || "#888";
 
   return L.divIcon({
     className: "",
@@ -17,11 +18,17 @@ export function createVehicleIcon(
         height: 14px;
         background: ${color};
         border-radius: 50%;
-        border: 2px solid white;
+        border: 1px solid white;
         box-shadow: 0 0 6px ${color};
       "></div>
     `,
     iconSize: [20, 20],
     iconAnchor: [10, 10],
   });
+}
+
+function normalizeRoute(route?: string | null) {
+  if (!route) return null;
+
+  return route.split("_")[0];
 }

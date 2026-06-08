@@ -1,8 +1,7 @@
-import { Marker } from "react-leaflet";
+import { Marker, Popup } from "react-leaflet";
 import { useMapBounds } from "./useMapBounds";
 import React, { useMemo } from "react";
 import { createVehicleIcon } from "./createVehicleIcons";
-import normalizeRoute from "./normalizeRoute";
 
 export const VehicleMarkers = React.memo(function VehicleMarkers({
   vehicles,
@@ -12,36 +11,49 @@ export const VehicleMarkers = React.memo(function VehicleMarkers({
   routeColorMap: Map<string, string>;
 }) {
   const bounds = useMapBounds();
-
   const iconCache = useMemo(() => new Map(), []);
 
-  const getIcon = (route: string | null | undefined) => {
-    const key = normalizeRoute(route) || "default";
+  const getRouteKey = (v: Vehicle) =>
+    (v.routeShort || v.routeId || "").split("_")[0];
 
-    if (!iconCache.has(key)) {
-      iconCache.set(key, createVehicleIcon(route, routeColorMap));
+  const getIcon = (routeKey: string) => {
+    if (!iconCache.has(routeKey)) {
+      iconCache.set(routeKey, createVehicleIcon(routeKey, routeColorMap));
     }
-
-    return iconCache.get(key);
+    return iconCache.get(routeKey);
   };
 
   const visibleVehicles = useMemo(() => {
     if (!bounds) return [];
-
-    const paddedBounds = bounds.pad(0.2);
-
-    return vehicles.filter((v) => paddedBounds.contains([v.lat, v.lon]));
+    const padded = bounds.pad(0.2);
+    return vehicles.filter((v) => padded.contains([v.lat, v.lon]));
   }, [vehicles, bounds]);
 
   return (
     <>
-      {visibleVehicles.map((v) => (
-        <Marker
-          key={v.id}
-          position={[v.lat, v.lon]}
-          icon={getIcon(normalizeRoute(v.route))}
-        />
-      ))}
+      {visibleVehicles.map((v) => {
+        const routeKey = getRouteKey(v);
+
+        return (
+          <Marker
+            key={v.id} // IMPORTANT FIX
+            position={[v.lat, v.lon]}
+            icon={getIcon(routeKey)}
+          >
+            <Popup>
+              <div>
+                <h3>🚆 Train</h3>
+                <p>
+                  <b>Service:</b> {v.label || "Unknown"}
+                </p>
+                <p>
+                  <b>Route:</b> {routeKey}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
     </>
   );
 });

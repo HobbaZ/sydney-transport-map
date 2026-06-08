@@ -1,6 +1,4 @@
 import { useRef, useState, useEffect } from "react";
-import normalizeRoute from "./normalizeRoute";
-import L from "leaflet";
 import { getPointAtDistance, snapToRoute } from "./distanceUtils";
 import type { Vehicle, RouteShape } from "./types";
 
@@ -9,7 +7,6 @@ export default function useVehicles(routes: Record<string, RouteShape>) {
   const prevRef = useRef<VehicleMap>({});
   const rafRef = useRef<number | null>(null);
   const lastRenderRef = useRef(0);
-  const duration = 10000;
 
   useEffect(() => {
     let running = true;
@@ -19,7 +16,7 @@ export default function useVehicles(routes: Record<string, RouteShape>) {
       const map = prevRef.current;
 
       const updated = Object.values(map).map((v) => {
-        const routeKey = normalizeRoute(v.route);
+        const routeKey = v.route;
         const route = routeKey ? routes[routeKey] : null;
 
         if (!route || !route.points) return v;
@@ -67,7 +64,7 @@ export default function useVehicles(routes: Record<string, RouteShape>) {
       data.forEach((v) => {
         if (!v.lat || !v.lon) return;
 
-        const routeKey = normalizeRoute(v.route);
+        const routeKey = v.route;
         const route = routeKey ? routes[routeKey] : null;
 
         let snapped = null;

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { VehicleMarkers } from "./vehicleMarkers";
 import RoutesLayer from "./RoutesLayer";
 import useVehicles from "./useVehicles";
-import normalizeRoute from "./normalizeRoute";
+import TrainLegend from "./lineColours";
 
 export default function MapView() {
   const [routes, setRoutes] = useState<Record<string, RouteShape>>({});
@@ -24,10 +24,9 @@ export default function MapView() {
   const routeColorMap = useMemo(() => {
     const map = new Map<string, string>();
 
-    Object.entries(routes).forEach(([routeId, route]) => {
-      const key = normalizeRoute(routeId);
-      if (key) {
-        map.set(key, route.color || "#888");
+    Object.values(routes).forEach((route) => {
+      if (route.routeId) {
+        map.set(route.routeId, route.color || "#888");
       }
     });
 
@@ -35,16 +34,20 @@ export default function MapView() {
   }, [routes]);
 
   return (
-    <MapContainer
-      center={[-33.8688, 151.2093]}
-      zoom={12}
-      style={{ height: "100vh" }}
-    >
-      <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png" />
+    <>
+      <MapContainer
+        center={[-33.8688, 151.2093]}
+        zoom={12}
+        style={{ height: "100vh" }}
+      >
+        <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png" />
 
-      <RoutesLayer routes={routes} routeColorMap={routeColorMap} />
+        <RoutesLayer routes={routes} routeColorMap={routeColorMap} />
 
-      <VehicleMarkers vehicles={vehicles} routeColorMap={routeColorMap} />
-    </MapContainer>
+        <VehicleMarkers vehicles={vehicles} routeColorMap={routeColorMap} />
+      </MapContainer>
+
+      <TrainLegend />
+    </>
   );
 }
