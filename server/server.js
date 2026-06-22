@@ -76,7 +76,13 @@ app.get("/api/vehicles", async (req, res) => {
   }
 });
 
+let cachedRoutes = null;
+
 app.get("/api/routes", async (req, res) => {
+  if (cachedRoutes) {
+    return res.json(cachedRoutes);
+  }
+
   try {
     const shapes = await loadShapes();
 
@@ -106,6 +112,8 @@ app.get("/api/routes", async (req, res) => {
 
     console.log("Routes built:", Object.keys(routes).length);
 
+    cachedRoutes = routes;
+
     res.json(routes);
   } catch (err) {
     console.error(err);
@@ -115,6 +123,15 @@ app.get("/api/routes", async (req, res) => {
     });
   }
 });
+
+/*setInterval(() => {
+  const mem = process.memoryUsage();
+
+  console.log({
+    heapUsed: Math.round(mem.heapUsed / 1024 / 1024) + "MB",
+    rss: Math.round(mem.rss / 1024 / 1024) + "MB",
+  });
+}, 30000);*/
 
 if (process.env.NODE_ENV === "production") {
   const clientPath = path.join(__dirname, "../client/build/client");
