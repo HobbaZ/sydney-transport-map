@@ -10,14 +10,35 @@ RUN npm ci --omit=dev
 ENV NODE_ENV=production
 
 FROM node:22-alpine AS build-env
-COPY . /app/
-COPY --from=development-dependencies-env /app/node_modules /app/node_modules
+
 WORKDIR /app
+
+# Copy entire project
+COPY . .
+
+# Install server dependencies
+WORKDIR /app/server
+RUN npm ci
+
+# Install client dependencies
+WORKDIR /app/client
+RUN npm ci
+
+# Build React Router app
 RUN npm run build
 
+# ---------------- Runtime ----------------
+
 FROM node:22-alpine
-COPY ./package.json package-lock.json /app/
-COPY --from=production-dependencies-env /app/node_modules /app/node_modules
-COPY --from=build-env /app/build /app/build
+
 WORKDIR /app
-CMD ["npm", "run", "start"]
+
+COPY --from=build /app /app
+
+WORKDIR /app/server
+
+ENV NODE_ENV=production
+
+EXPOSE 3001
+
+CMD ["npm", "run", "server"]
