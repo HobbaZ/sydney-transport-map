@@ -18,8 +18,8 @@ COPY . .
 
 # install ALL deps (important for react-router CLI)
 RUN npm ci
-RUN cd server && npm ci
-RUN cd client && npm ci
+RUN cd server && npm install
+RUN cd client && npm install
 
 # build client
 RUN cd client && npm run build
