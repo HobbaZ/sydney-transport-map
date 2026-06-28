@@ -6,28 +6,24 @@ RUN npm ci
 FROM node:22-alpine AS production-dependencies-env
 COPY ./package.json package-lock.json /app/
 WORKDIR /app
-RUN npm ci --omit=dev
+RUN npm ci
 ENV NODE_ENV=production
 
-FROM node:22-alpine AS build-env
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
-# Copy entire project
+# copy everything first
 COPY . .
 
-# Install server dependencies
-WORKDIR /app/server
+# install ALL deps (important for react-router CLI)
 RUN npm ci
+RUN cd server && npm ci
+RUN cd client && npm ci
 
-# Install client dependencies
-WORKDIR /app/client
-RUN npm ci
+# build client
+RUN cd client && npm run build
 
-# Build React Router app
-RUN npm run build
-
-# ---------------- Runtime ----------------
 
 FROM node:22-alpine
 
