@@ -1,25 +1,16 @@
 import { useMemo } from "react";
 import { MapContainer, TileLayer } from "react-leaflet";
-import { useEffect, useState } from "react";
 import { VehicleMarkers } from "./vehicleMarkers";
 import RoutesLayer from "./RoutesLayer";
-import useVehicles from "./useVehicles";
 import TrainLegend from "./lineColours";
 
-export default function MapView() {
-  const [routes, setRoutes] = useState<Record<string, RouteShape>>({});
+type Props = {
+  routes: Record<string, RouteShape>;
+  vehicles: Vehicle[];
+};
 
-  useEffect(() => {
-    const fetchRoutes = async () => {
-      const res = await fetch("/api/routes");
-      const data = await res.json();
-      setRoutes(data);
-    };
-
-    fetchRoutes();
-  }, []);
-
-  const vehicles = useVehicles(routes);
+export default function MapView({ routes, vehicles }: Props) {
+  //const vehicles = useVehicles(routes, vehiclesFromLoader);
 
   const routeColorMap = useMemo(() => {
     const map = new Map<string, string>();

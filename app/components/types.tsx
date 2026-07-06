@@ -23,6 +23,18 @@ type RouteShape = {
   points: { lat: number; lon: number }[];
 };
 
+type LiveVehicle = {
+  id: string;
+  lat: number;
+  lon: number;
+  prevLat: number;
+  prevLon: number;
+  targetLat: number;
+  targetLon: number;
+  lastUpdate: number;
+  speed: number; // optional fallback
+};
+
 type Shapes = Record<string, RouteShape>;
 
 type VehicleMap = Record<string, AnimatedVehicle>;

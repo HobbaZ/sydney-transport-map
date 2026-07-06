@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
+import { useLiveVehicles } from "./useLiveVehicles";
 
-export default function MapClient() {
+type Props = {
+  routes: Record<string, RouteShape>;
+};
+
+export default function MapClient({ routes }: Props) {
   const [MapComponent, setMapComponent] = useState<any>(null);
+  const vehicles = useLiveVehicles();
 
   useEffect(() => {
     import("./Map").then((mod) => {
@@ -11,5 +17,5 @@ export default function MapClient() {
 
   if (!MapComponent) return <div>Loading map...</div>;
 
-  return <MapComponent />;
+  return <MapComponent routes={routes} vehicles={vehicles} />;
 }
