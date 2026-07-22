@@ -1,14 +1,14 @@
-# new-react-portfolio
+# sydney-transport-map
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://choosealicense.com/licenses/mit/)
 ![License](https://img.shields.io/badge/Made%20with-React-darkgreen.svg)
-[![Github Commits](https://img.shields.io/github/commit-activity/w/HobbaZ/new-react-portfolio)](https://github.com/HobbaZ/new-react-portfolio/commits)
-[![GitHub latest commit](https://img.shields.io/github/last-commit/HobbaZ/new-react-portfolio)](https://github.com/HobbaZ/new-react-portfolio/branches)
+[![Github Commits](https://img.shields.io/github/commit-activity/w/HobbaZ/sydney-transport-map)](https://github.com/HobbaZ/sydney-transport-map/commits)
+[![GitHub latest commit](https://img.shields.io/github/last-commit/HobbaZ/sydney-transport-map)](https://github.com/HobbaZ/sydney-transport-map/branches)
 [![GitHub followers](https://img.shields.io/github/followers/HobbaZ.svg)]()
-![GitHub repo size](https://img.shields.io/github/repo-size/HobbaZ/new-react-portfolio)
-[![GitHub issues](https://img.shields.io/github/issues/HobbaZ/new-react-portfolio)](https://img.shields.io/github/issues/HobbaZ/new-react-portfolio)
-![GitHub forks](https://img.shields.io/github/forks/HobbaZ/new-react-portfolio)
-![GitHub language count](https://img.shields.io/github/languages/count/HobbaZ/new-react-portfolio)
+![GitHub repo size](https://img.shields.io/github/repo-size/HobbaZ/sydney-transport-map)
+[![GitHub issues](https://img.shields.io/github/issues/HobbaZ/sydney-transport-map)](https://img.shields.io/github/issues/HobbaZ/sydney-transport-map)
+![GitHub forks](https://img.shields.io/github/forks/HobbaZ/sydney-transport-map)
+![GitHub language count](https://img.shields.io/github/languages/count/HobbaZ/sydney-transport-map)
 
 ## Description
 
