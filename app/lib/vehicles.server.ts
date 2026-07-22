@@ -6,7 +6,7 @@ dotenv.config();
 let cachedVehicles: any[] | null = null;
 let lastFetchTime = 0;
 let lastClientRequest = 0;
-const FETCH_INTERVAL = 10000; // 10s
+const FETCH_INTERVAL = 5000; // 5s
 const ACTIVE_WINDOW = 30000; // 30s (consider "user active")
 const API_KEY = process.env.TFNSW_API_KEY;
 

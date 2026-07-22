@@ -5,7 +5,6 @@ import { createVehicleIcon } from "./createVehicleIcons";
 
 export const VehicleMarkers = React.memo(function VehicleMarkers({
   vehicles,
-  routeColorMap,
 }: {
   vehicles: Vehicle[];
   routeColorMap: Map<string, string>;
@@ -13,12 +12,11 @@ export const VehicleMarkers = React.memo(function VehicleMarkers({
   const bounds = useMapBounds();
   const iconCache = useMemo(() => new Map(), []);
 
-  const getRouteKey = (v: Vehicle) =>
-    (v.routeShort || v.routeId || "").split("_")[0];
+  const getRouteKey = (v: Vehicle) => (v.routeId || "").split("_")[0];
 
   const getIcon = (routeKey: string) => {
     if (!iconCache.has(routeKey)) {
-      iconCache.set(routeKey, createVehicleIcon(routeKey, routeColorMap));
+      iconCache.set(routeKey, createVehicleIcon(routeKey));
     }
     return iconCache.get(routeKey);
   };
@@ -42,7 +40,6 @@ export const VehicleMarkers = React.memo(function VehicleMarkers({
           >
             <Popup>
               <div>
-                <h3>🚆 Train</h3>
                 <p>
                   <b>Service:</b> {v.label || "Unknown"}
                 </p>

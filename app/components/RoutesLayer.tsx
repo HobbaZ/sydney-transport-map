@@ -1,24 +1,20 @@
 import { Polyline } from "react-leaflet";
-import type { Shapes } from "./types";
+import type { Shapes, RouteShape } from "./types";
 
 export default function RoutesLayer({ routes }: { routes: Shapes }) {
   return (
     <>
-      {Object.entries(routes).map(([id, shape]) => {
-        if (!Array.isArray(shape.points) || shape.points.length < 2) {
+      {(Object.entries(routes) as [string, RouteShape][]).map(([id, shape]) => {
+        if (shape.points.length < 2) {
           return null;
         }
-
-        const latLngs = shape.points.map(
-          (p) => [p.lat, p.lon] as [number, number],
-        );
 
         return (
           <Polyline
             key={id}
-            positions={latLngs}
+            positions={shape.points.map((p) => [p.lat, p.lon])}
             pathOptions={{
-              color: shape.color || "#888",
+              color: shape.color,
               weight: 5,
               opacity: 0.9,
             }}

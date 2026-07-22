@@ -1,87 +1,109 @@
-# Welcome to React Router!
+# new-react-portfolio
 
-A modern, production-ready template for building full-stack React applications using React Router.
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://choosealicense.com/licenses/mit/)
+![License](https://img.shields.io/badge/Made%20with-React-darkgreen.svg)
+[![Github Commits](https://img.shields.io/github/commit-activity/w/HobbaZ/new-react-portfolio)](https://github.com/HobbaZ/new-react-portfolio/commits)
+[![GitHub latest commit](https://img.shields.io/github/last-commit/HobbaZ/new-react-portfolio)](https://github.com/HobbaZ/new-react-portfolio/branches)
+[![GitHub followers](https://img.shields.io/github/followers/HobbaZ.svg)]()
+![GitHub repo size](https://img.shields.io/github/repo-size/HobbaZ/new-react-portfolio)
+[![GitHub issues](https://img.shields.io/github/issues/HobbaZ/new-react-portfolio)](https://img.shields.io/github/issues/HobbaZ/new-react-portfolio)
+![GitHub forks](https://img.shields.io/github/forks/HobbaZ/new-react-portfolio)
+![GitHub language count](https://img.shields.io/github/languages/count/HobbaZ/new-react-portfolio)
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Description
 
-## Features
+### Project Aim
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+Make a Sydney train tracker website to test a real time data api.
 
-## Getting Started
+### What Problem Does It Solve
 
-### Installation
+Increasing interactivity of my personal website.
 
-Install the dependencies:
+### What I Learnt
 
-```bash
-npm install
-```
-
-### Development
-
-Start the development server with HMR:
-
-```bash
-npm run dev
-```
-
-Your application will be available at `http://localhost:5173`.
-
-## Building for Production
-
-Create a production build:
-
-```bash
-npm run build
-```
+How to use real time data in apps.
 
 ## Deployment
 
-### Docker Deployment
+Deployed on Fly.io here [here](https://sydney-transport-map.fly.dev/)
 
-To build and run using Docker:
+## Table of Contents
 
-```bash
-docker build -t my-app .
+- [Description](#description)
+- [User Story](#user-story)
+- [Screenshots](#screenshots)
+- [Installation](#installation)
+- [Features](#features)
+- [Technology](#technology)
+- [Contributors](#contributors)
+- [Acknowledgements](#acknowledgements)
+- [Testing](#testing)
+- [License](#license)
+- [Questions](#questions)
 
-# Run the container
-docker run -p 3000:3000 my-app
-```
+## User Story
 
-The containerized application can be deployed to any platform that supports Docker, including:
+I WANT to make a Sydney train tracker to test a real time data api.
 
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
+I WANT to do minimal data refreshes (every 5 sec) to reduce api calls.
 
-### DIY Deployment
+SO THAT it balances a usable site with low data calls.
 
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
+## Screenshots
 
-Make sure to deploy the output of `npm run build`
+## Installation
 
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
+1. Clone the repo to your computer by clicking the green code button and copying the SSH version or clicking the blue use template button.
 
-## Styling
+2. Open Gitbash in your desired folder and type `git clone ` then right click to paste the string and hit enter. The repo will then be cloned to your computer.
 
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
+3. Navigate to the repo folder and type `code .` into gitbash to open the repo in VS Code.
 
----
+4. Open a new Terminal in VS Code and type `npm install` to install the repo dependencies.
 
-Built with ❤️ using React Router.
+5. Finally, type `npm run dev` into the terminal and it will start the dev server.
+
+Note: when using react router react build and docker, take files out of client folder and use default react router server, not express server
+
+## Features
+
+## Technology
+
+- React Router
+- Bootstrap
+- Transport for NSW realtime train data
+- Transport for NSW rail shape data
+
+## Contributors
+
+[Zachary Hobba](https://github.com/HobbaZ)
+
+You can also contribute by opening a pull request or submitting an issue.
+
+## Acknowledgements
+
+[Transport open data documentation](https://opendata.transport.nsw.gov.au/)
+
+## Testing
+
+No tests for this project
+
+## License
+
+MIT
+
+**Copyright 2026 Zachary Hobba**
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## Questions
+
+Find me on Github at [HobbaZ](https://github.com/HobbaZ)
+
+If this has helped you with your web development, consider buying me a Coffee (only costs $3) at [zachobba](https://buymeacoffee.com/zachobbaS)
+
+Email me at [zachobba@gmail.com](zachobba@gmail.com)

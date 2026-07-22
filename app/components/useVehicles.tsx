@@ -1,55 +1,96 @@
 import { useRef, useState, useEffect } from "react";
 import { getPointAtDistance, snapToRoute } from "./distanceUtils";
-import type { Vehicle, RouteShape, LiveVehicle } from "./types";
+import type { RouteShape, LiveVehicle } from "./types";
 
-export function useVehicleFeed() {
-  const [vehicles, setVehicles] = useState<LiveVehicle[]>([]);
-  const prevRef = useRef<Record<string, LiveVehicle>>({});
+type VehicleState = LiveVehicle & {
+  distAlong: number;
+  targetDistAlong: number;
+  speed: number;
+  timestamp: number;
+};
+
+export function useVehicleFeed(routes: Record<string, RouteShape>) {
+  const [vehicles, setVehicles] = useState<VehicleState[]>([]);
+
+  const prevRef = useRef<Record<string, VehicleState>>({});
 
   useEffect(() => {
     const fetchVehicles = async () => {
       const res = await fetch("/api/vehicles");
-      const data: any[] = await res.json();
+
+      const data = await res.json();
 
       const now = Date.now();
+
       const prev = prevRef.current;
-      const next: Record<string, LiveVehicle> = {};
+
+      const next: Record<string, VehicleState> = {};
 
       for (const v of data) {
         const old = prev[v.id];
 
+        const route = v.routeId ? routes[v.routeId] : null;
+
+        let distAlong = old?.targetDistAlong ?? 0;
+
+        if (route) {
+          const snapped = snapToRoute(v, route);
+
+          // ignore GPS points too far from track
+          if (snapped && snapped.distance < 0.01) {
+            distAlong = snapped.distAlong;
+          }
+        }
+
+        let speed = old?.speed ?? 0;
+
+        if (old) {
+          const elapsed = (now - old.timestamp) / 1000;
+
+          if (elapsed > 0) {
+            const delta = distAlong - old.targetDistAlong;
+
+            if (delta >= 0 && delta < 0.02) {
+              const measured = delta / elapsed;
+
+              // smooth speed changes
+              speed = speed * 0.8 + measured * 0.2;
+            }
+          }
+        }
+
         next[v.id] = {
-          id: v.id,
+          ...v,
 
-          // previous position
-          prevLat: old?.lat ?? v.lat,
-          prevLon: old?.lon ?? v.lon,
+          distAlong: old?.distAlong ?? distAlong,
 
-          // new target position (API truth)
-          lat: v.lat,
-          lon: v.lon,
-          targetLat: v.lat,
-          targetLon: v.lon,
+          targetDistAlong: distAlong,
 
-          lastUpdate: now,
-          speed: v.speed ?? old?.speed ?? 0,
+          speed,
+
+          timestamp: now,
         };
       }
 
       prevRef.current = next;
+
       setVehicles(Object.values(next));
     };
 
     fetchVehicles();
-    const id = setInterval(fetchVehicles, 5000);
 
-    return () => clearInterval(id);
-  }, []);
+    const timer = setInterval(fetchVehicles, 5000);
+
+    return () => clearInterval(timer);
+  }, [routes]);
 
   return vehicles;
 }
 
-export function useVehicleInterpolation(apiVehicles: LiveVehicle[]) {
+export function useVehicleInterpolation(
+  apiVehicles: VehicleState[],
+  routes: Record<string, RouteShape>,
+) {
   const [rendered, setRendered] = useState(apiVehicles);
 
   const latestRef = useRef(apiVehicles);
@@ -65,17 +106,31 @@ export function useVehicleInterpolation(apiVehicles: LiveVehicle[]) {
       const now = Date.now();
 
       const updated = latestRef.current.map((v) => {
-        const dt = Math.min((now - v.lastUpdate) / 1000, 1);
+        const route = v.routeId ? routes[v.routeId] : null;
 
-        // simple linear interpolation
-        const lat = v.prevLat + (v.lat - v.prevLat) * dt;
+        if (!route) {
+          return v;
+        }
 
-        const lon = v.prevLon + (v.lon - v.prevLon) * dt;
+        const elapsed = (now - v.timestamp) / 1000;
+
+        let dist = v.distAlong + v.speed * elapsed;
+
+        // gently correct toward GPS
+        const correction = (v.targetDistAlong - dist) * 0.05;
+
+        dist += correction;
+
+        const pos = getPointAtDistance(route, dist);
 
         return {
           ...v,
-          lat,
-          lon,
+
+          lat: pos.lat,
+
+          lon: pos.lon,
+
+          distAlong: dist,
         };
       });
 
@@ -86,12 +141,14 @@ export function useVehicleInterpolation(apiVehicles: LiveVehicle[]) {
       }
     };
 
-    requestAnimationFrame(animate);
+    const frame = requestAnimationFrame(animate);
 
     return () => {
       running = false;
+
+      cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [routes]);
 
   return rendered;
 }
