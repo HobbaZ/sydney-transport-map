@@ -35,15 +35,39 @@ function simplifyRoute(points: any[]) {
   }));
 }
 
-async function loadShapes() {
+async function loadShapes(): Promise<any[]> {
   if (cachedShapes) return cachedShapes;
 
   const res = await fetch(SHAPES_URL);
-  const data = await res.json();
+  const body = await res.text();
 
-  cachedShapes = data; // cache in memory
+  console.log("Shapes response:", {
+    status: res.status,
+    contentType: res.headers.get("content-type"),
+  });
 
-  return data;
+  if (!res.ok) {
+    throw new Error(`Shapes download failed: ${res.status} ${res.statusText}`);
+  }
+
+  let data: unknown;
+
+  try {
+    data = JSON.parse(body);
+  } catch {
+    throw new Error("Shapes download did not return valid JSON");
+  }
+
+  if (!Array.isArray(data)) {
+    throw new Error("Expected shapes JSON to be an array");
+  }
+
+  if (data.length === 0) {
+    throw new Error("Shapes JSON contains no routes");
+  }
+
+  cachedShapes = data;
+  return cachedShapes;
 }
 
 export async function getRoutes() {
@@ -54,35 +78,44 @@ export async function getRoutes() {
   try {
     const shapes = await loadShapes();
 
-    const routes = {};
+    console.log("Shape count:", shapes.length);
+    console.log("First shape keys:", Object.keys(shapes[0] ?? {}));
+    console.log(
+      "First shape preview:",
+      JSON.stringify(shapes[0], null, 2).slice(0, 2000),
+    );
+
+    const routes: Record<string, any> = {};
 
     for (const shape of shapes) {
-      const shapeId = shape.shape_id;
-
+      const shapeId = shape.ROUTE_ID;
       if (!shapeId) continue;
 
       const coords = shape.json_geometry?.coordinates || [];
-
       const points = [];
 
-      for (let i = 0; i < coords.length; i++) {
-        const c = coords[i];
-        const lon = mercatorToLatLng(c[0], c[1]);
+      for (const c of coords) {
+        const { lat, lon } = mercatorToLatLng(c[0], c[1]);
 
-        if (isNaN(lon.lat) || isNaN(lon.lon)) continue;
-
-        points.push(lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        points.push({ lat, lon });
       }
 
       if (points.length < 2) continue;
 
-      routes[shape.route_short_name] = {
+      const routeShortName = shape.ROUTE_SHORT_NAME;
+
+      routes[routeShortName] = {
         shapeId,
-        routeId: shape.route_short_name || null,
-        routeName: shape.route_long_name || null,
-        color: shape.route_color ? `#${shape.route_color}` : "#888",
+        routeId: routeShortName || null,
+        routeName: shape.ROUTE_LONG_NAME || null,
+        color: shape.ROUTE_COLOR ? `#${shape.ROUTE_COLOR}` : "#888",
         points: simplifyRoute(points),
       };
+    }
+
+    if (Object.keys(routes).length === 0) {
+      throw new Error("No valid route geometry found in route data");
     }
 
     cachedRoutes = routes;
